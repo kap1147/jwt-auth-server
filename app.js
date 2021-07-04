@@ -1,34 +1,38 @@
-require("dotenv").config();
-const express = require("express");
-const bodyparser = require("body-parser");
-const mongoose = require("mongoose");
-const cors = require("cors");
 const api = require("./routes");
+const cookieParser = require('cookie-parser')
+const express = require("express");
+const fs = require('fs');
+const https = require('https');
+const path = require('path');
+const { connectDB, mongoose } = require('./utils/db');
+require('dotenv').config({path: './config.env'});
 
 //initialize express app
 const app = express();
-app.use(bodyparser.json());
-app.use(bodyparser.urlencoded({ extended: false }));
-app.use(cors());
-
+const port = process.env.PORT;
 //setup database connection
-mongoose
-  .connect("mongodb://localhost:27017/authdemo", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-  })
-  .then(() => console.log("Database connected!"))
-  .catch((err) => console.error(err));
+connectDB();
 
+// for parsing cookies
+app.use(cookieParser());
+//for parsing application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: true }));
+// for parsing application/json
+app.use(express.json());
 //setup routes:
 app.get("/", (req, res) => {
   return res.status(200).send("ok");
 });
 
-app.use("/api", api);
+app.use("/api/auth", api);
 
-//start server and listen on port 4000
-app.listen(4000, () => {
-  console.log("Server Running on port 4000");
-});
+///////SSL Server//////
+const sslServer = https.createServer(
+	{
+		key: fs.readFileSync(path.join(__dirname, 'cert', 'key.pem')),
+		cert: fs.readFileSync(path.join(__dirname, 'cert', 'cert.pem')),
+	},
+	app
+)
+
+sslServer.listen(port , () => console.log(`Secure server running on :${port}`))

@@ -1,3 +1,8 @@
+# enviremnt vars
+config.env
+# SSL certificates
+cert/
+
 # Logs
 logs
 *.log

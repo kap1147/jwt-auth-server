@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const privateKey = process.env.ACCESS_TOKEN_SECRET;
+const privateKey = process.env.JWT_ACCESS_SECRET;
 
 //middleware function to check if the incoming request in authenticated:
 exports.checkAuth = (req, res, next) => {
@@ -12,8 +12,9 @@ exports.checkAuth = (req, res, next) => {
   } else {
     try {
       //if the incoming request has a valid token, we extract the payload from the token and attach it to the request object.
-      const payload = jwt.verify(token, privateKey);
-      req.user = payload.user;
+      const payload = jwt.verify(token, '9a9EqH8OmwA80CwNlRoopf6mjmn7Rj');
+      req.user = {};
+      req.user._id = payload._id;
       next();
     } catch (error) {
       // token can be expired or invalid. Send appropriate errors in each case:

@@ -1,54 +1,10 @@
-const User = require("../models/user.model");
-const Token = require("../models/token.model");
+const User = require("../models/User");
+const Token = require("../models/Token");
+const { serialize, getToken, getGoogleProfile, getUserToken } = require("../utils/helpers");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } = process.env;
 
-exports.signup = async (req, res) => {
-  try {
-    //check if username is already taken:
-    let user = await User.findOne({ username: req.body.username });
-    if (user) {
-      return res.status(400).json({ error: "Username taken." });
-    } else {
-      //create new user and generate a pair of tokens and send
-      user = await new User(req.body).save();
-      let accessToken = await user.createAccessToken();
-      let refreshToken = await user.createRefreshToken();
-
-      return res.status(201).json({ accessToken, refreshToken });
-    }
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Internal Server Error!" });
-  }
-};
-exports.login = async (req, res) => {
-  try {
-    //check if user exists in database:
-    let user = await User.findOne({ username: req.body.username });
-    //send error if no user found:
-    if (!user) {
-      return res.status(404).json({ error: "No user found!" });
-    } else {
-      //check if password is valid:
-      let valid = await bcrypt.compare(req.body.password, user.password);
-      if (valid) {
-        //generate a pair of tokens if valid and send
-        let accessToken = await user.createAccessToken();
-        let refreshToken = await user.createRefreshToken();
-
-        return res.status(201).json({ accessToken, refreshToken });
-      } else {
-        //send error if password is invalid
-        return res.status(401).json({ error: "Invalid password!" });
-      }
-    }
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Internal Server Error!" });
-  }
-};
 exports.generateRefreshToken = async (req, res) => {
   try {
     //get refreshToken
@@ -81,9 +37,82 @@ exports.logout = async (req, res) => {
     //delete the refresh token saved in database:
     const { refreshToken } = req.body;
     await Token.findOneAndDelete({ token: refreshToken });
+    res.clearCookie('refreshToken', {path: '/'});
     return res.status(200).json({ success: "User logged out!" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal Server Error!" });
   }
+};
+
+exports.getToken = async (req, res) => {
+  try {
+    // Get refresh token from cookie
+    let token = req.cookies.refreshToken;
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    if (decoded){
+      console.log('decoded: ', decoded._id);
+      let isValidToken = await Token.findOne({token: token});
+      if (isValidToken){
+	const user = await User.findById(decoded._id);
+	if (user){
+	  console.log(user._id);
+	  let accessToken = await user.createAccessToken();
+          return res.status(200).json({accessToken: accessToken});
+	};
+      };
+    };
+  } catch(err) {
+    console.error(err);
+    return res.send(err);
+  };
+};
+
+exports.getUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      return res.status(200).json(user);
+    }
+  } catch(err) {
+    console.error(err);
+    return res.send(err);
+  };
+};
+
+exports.googleCallback = async (req, res) => {
+  try {
+    if (req.query.code) {
+    let data = serialize({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code: req.query.code,
+      grant_type: 'authorization_code',
+      redirect_uri: 'https://theyardapp.com/api/auth/google/callback',
+    });
+    const redirectURI = ('https://oauth2.googleapis.com/token?' + data);
+    const tokenObj = await getToken(redirectURI);
+    const profile =  getGoogleProfile(tokenObj.id_token);
+    // find current user in UserModel
+    let token = await getUserToken(profile);
+    // TODO
+    res.cookie('refreshToken', token.refreshToken, {path: '/', maxAge: 360000});
+    console.log(token);
+    return res.redirect('https://theyardapp.com')
+    };
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error!" });
+  }
+};
+
+exports.googleLogin = (req, res) => {
+  let data = serialize({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    scope: 'email profile',
+    redirect_uri: 'https://theyardapp.com/api/auth/google/callback',
+    response_type: 'code'
+  })
+  const redirectURI = ('https://accounts.google.com/o/oauth2/v2/auth?' + data);
+  res.redirect(redirectURI);
 };
