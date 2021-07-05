@@ -1,6 +1,7 @@
 const fetch = require("node-fetch");
 const jwt = require("jsonwebtoken");
 const Profile = require('../models/Profile');
+const Token = require('../models/Token');
 const User = require('../models/User');
 
 exports.serialize = function(obj) {
@@ -10,6 +11,22 @@ exports.serialize = function(obj) {
       str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
     }
   return str.join("&");
+};
+
+exports.verifyRefreshToken = async function(_id) {
+  try {
+    let token = await Token.findById(_id);
+    if (token) {
+      let decoded = jwt.verify(token.token, process.env.JWT_REFRESH_SECRET);
+      if (decoded) {
+        return true;
+      };
+    };
+    return false;
+  } catch(err) {
+    console.error(err);
+    return false;
+  };
 };
 
 exports.getUserToken = async function(profile) {

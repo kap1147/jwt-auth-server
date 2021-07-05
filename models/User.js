@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const Token = require("./Token");
-require('dotenv').config({path: '../utils/config.env'});
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -81,13 +80,18 @@ userSchema.methods = {
     },
     createRefreshToken: async function () {
         try {
-            let { _id } = this;
+	    let { _id } = this;
+            const token = await Token.findById(_id);
+            // if token exist delete and make a new one
+	    if (token) {
+              await token.delete();
+	    }
 	    let refreshToken = jwt.sign(
                 { _id: _id },
 		process.env.JWT_REFRESH_SECRET,
 		{ expiresIn: '1d' }
 	    );
-	    await new Token({ token: refreshToken}).save();
+	    await new Token({ _id: _id, token: refreshToken}).save();
 	    return refreshToken;
 	}catch (err) {
             console.log(err);

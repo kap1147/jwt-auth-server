@@ -3,7 +3,6 @@ const Token = require("../models/Token");
 const { serialize, getToken, getGoogleProfile, getUserToken } = require("../utils/helpers");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } = process.env;
 
 exports.generateRefreshToken = async (req, res) => {
   try {
@@ -20,8 +19,8 @@ exports.generateRefreshToken = async (req, res) => {
         return res.status(401).json({ error: "Token expired!" });
       } else {
         //extract payload from refresh token and generate a new access token and send it
-        const payload = jwt.verify(tokenDoc.token, REFRESH_TOKEN_SECRET);
-        const accessToken = jwt.sign({ user: payload }, ACCESS_TOKEN_SECRET, {
+        const payload = jwt.verify(tokenDoc.token, process.env.JWT_REFRESH_SECRET);
+        const accessToken = jwt.sign({ user: payload }, process.env.JWT_ACCESS_SECRET, {
           expiresIn: "10m",
         });
         return res.status(200).json({ accessToken });
