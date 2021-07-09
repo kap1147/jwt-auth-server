@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Profile = require("../models/Profile");
 const Token = require("../models/Token");
 const { serialize, getToken, getGoogleProfile, getUserToken } = require("../utils/helpers");
 const bcrypt = require("bcryptjs");
@@ -50,12 +51,10 @@ exports.getToken = async (req, res) => {
     let token = req.cookies.refreshToken;
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
     if (decoded){
-      console.log('decoded: ', decoded._id);
       let isValidToken = await Token.findOne({token: token});
       if (isValidToken){
 	const user = await User.findById(decoded._id);
 	if (user){
-	  console.log(user._id);
 	  let accessToken = await user.createAccessToken();
           return res.status(200).json({accessToken: accessToken});
 	};
@@ -69,9 +68,12 @@ exports.getToken = async (req, res) => {
 
 exports.getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    if (user) {
-      return res.status(200).json(user);
+    const profile = await Profile.findById(req.user._id);
+    if (profile) {
+      return res.status(200).json({user: {
+        imageURL: profile.imageURL,
+	alias: profile.alias
+      }});
     }
   } catch(err) {
     console.error(err);
@@ -95,8 +97,8 @@ exports.googleCallback = async (req, res) => {
     // find current user in UserModel
     let token = await getUserToken(profile);
     // TODO
-    res.cookie('refreshToken', token.refreshToken, {path: '/', maxAge: 360000});
-    console.log(token);
+    let time = 6000 * 60 * 60 * 4;
+    res.cookie('refreshToken', token.refreshToken, {path: '/', maxAge: time});
     return res.redirect('https://theyardapp.com')
     };
   } catch (error) {

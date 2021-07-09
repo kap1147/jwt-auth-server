@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema({
       type: String,
     }
   ],
+  isOnline: {
+    type: String,
+    default: false
+  },
   facebookID: {
     type: String,
     required: false, // only required for facebook users
@@ -70,7 +74,7 @@ userSchema.methods = {
 	    let accessToken = jwt.sign(
                 { _id: _id },
 		process.env.JWT_ACCESS_SECRET,
-		{ expiresIn: '10m' }
+		{ expiresIn: '2m' }
 	    );
 	    return accessToken;
 	}catch (err) {

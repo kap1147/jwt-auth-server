@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
 const jwt = require("jsonwebtoken");
+const Notification = require('../models/Notification');
 const Profile = require('../models/Profile');
 const Token = require('../models/Token');
 const User = require('../models/User');
@@ -19,13 +20,13 @@ exports.verifyRefreshToken = async function(_id) {
     if (token) {
       let decoded = jwt.verify(token.token, process.env.JWT_REFRESH_SECRET);
       if (decoded) {
-        return true;
+        return Boolean(true);
       };
     };
-    return false;
+    return Boolean(false);
   } catch(err) {
     console.error(err);
-    return false;
+    return Boolean(false);
   };
 };
 
@@ -78,4 +79,11 @@ exports.getToken = async function (url = '') {
 exports.getGoogleProfile = function (token){
   var decoded = jwt.decode(token);
   return decoded;
+};
+
+exports.createNotification = (data) => {
+  Notification.create(data, function (err, doc){
+    if(err) return err;
+    return true;
+  });
 };
