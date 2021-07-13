@@ -7,6 +7,7 @@ router.post("/", Middleware.checkAuth, upload.array('images', 5), PostController
 router.delete("/", Middleware.checkAuth, PostController.deletePost);
 router.get("/search", PostController.getAllPost);
 router.post("/home", PostController.getAllPostHome);
+router.get("/user", Middleware.checkAuth, PostController.getUserPost);
 router.get("/:id", PostController.getPost);
 router.post("/:id/bid", Middleware.checkAuth, PostController.openBid);
 router.delete("/:id/bid", Middleware.checkAuth, PostController.deleteBid);

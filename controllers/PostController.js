@@ -97,7 +97,7 @@ exports.getAllPostHome = async (req, res) => {
       $nearSphere: {
         $geometry: {
           type: "Point",
-          coordinates: [req.body.lng, req.body.lat],
+          coordinates: [req.body.lon, req.body.lat],
         }, //meters
         $maxDistance: 30 * 1609.34,
       },
@@ -126,8 +126,8 @@ exports.openBid = (req, res) => {
       function (err, doc) {
         if (err) return res.send(err);
 	let notifyData = {
-          receiver: doc.author,
-          sender: req.user._id,
+      receiver: doc.author,
+      sender: req.user._id,
 	  desc: 'New bid created.',
 	  link: doc._id,
 	  flag: 'bid',
@@ -152,4 +152,15 @@ exports.deleteBid = (req, res) => {
       }
     );
   });
+};
+
+exports.getUserPost = async (req, res) => {
+  try {
+    const posts = await Post.find({author: req.user._id});
+    if (posts) {
+      return res.status(200).send({posts: posts});
+    }
+  } catch(err) {
+    console.log(err);
+  };
 };

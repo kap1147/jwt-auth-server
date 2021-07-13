@@ -41,29 +41,19 @@ sslServer.listen(port , () => console.log(`Secure server running on :${port}`));
 
 ///////Socket IO///////
 const io = socketIo(sslServer, {path: '/socket.io'});
-//const connection = mongoose.connection;
 const jwt = require('jsonwebtoken');
-const User = require('./models/User');
+const Bid = require('./models/Bid');
 const Notification = require('./models/Notification');
-//connection.once("open", () => {
-//    console.log('MongoDB connection open');
-//    const notificationChangeStream = connection.collection('notifications').watch();
-//  
-//    notificationChangeStream.on('change', (change) => {
-//      switch (change.operationType) {
-//        case 'insert':
-//          const notification = change.fullDocument;
-//  	      console.log(notification);
-//      };
-//    });
-//  });
+const Post = require('./models/Post');
+const User = require('./models/User');
 
 io.use(function(socket, next){
   if (socket.handshake.query && socket.handshake.query.token){
     jwt.verify(socket.handshake.query.token, process.env.JWT_ACCESS_SECRET, function(err, decoded) {
       if (err) return next(new Error('Authentication error'));
-      socket.decoded = decoded;
-      socket.join(decoded._id)
+      socket.user = decoded;
+      console.log('room id: ', decoded._id);
+      socket.join(decoded._id);
       next();
     });
   }
@@ -75,24 +65,57 @@ io.use(function(socket, next){
   console.log(`User connected to socket.`);
   socket.on('isOnline', async () => {
     try {
-      const user = await User.findOneAndUpdate({_id: socket.decoded._id}, {isOnline: true}, {new: true});  
+      const user = await User.findOneAndUpdate({_id: socket.user._id}, {isOnline: true}, {new: true});  
     } catch(err) {
       console.error(err);
     };
   });
-  socket.on('getAlerts', async () => {
-    console.log('we are in loading alerts!');
+  socket.on('addBid', async (data) => {
+    // clean and structure date before creating new alert
     try {
-      let alerts = await Notification.find({receiver: socket.decoded._id});
+      let bidData = {
+         contractor: socket.user._id,
+         status: "open",
+         offerPrice: data.offerPrice,
+         offerDate: data.offerDate,
+         timestamp: Date.now(),
+         paid: false
+      };
+      const newBid = new Bid(bidData);
+      await newBid.save();
+      let postData = {
+        $push: {
+          bids: newBid._id,
+        }
+      };
+      const post = await Post.findOneAndUpdate({_id: data.postId}, postData, {new: true});
+      let alertData = {
+        receiver: post.author,
+        sender: socket.user._id,
+        desc: 'new',
+        link: post._id,
+        flag: 'bid'
+      };
+      const newAlert = new Notification(alertData);
+      await newAlert.save();
+      newAlert.sender = sender;
+      io.in(socket.user._id).emit('newAlert', newAlert);
+    } catch(err) {
+      console.error(err);
+    }
+  });
+  socket.on('getAlerts', async () => {
+    try {
+      let alerts = await Notification.find({receiver: socket.user._id}).select('-receiver').populate('sender', 'imageURL alias -_id');
       if (alerts) {
-        socket.emit('allAlerts', alerts)
+        socket.emit('allAlerts', alerts);
       }
     } catch(err) {};
   });
   socket.on('disconnect', async () => {
     try {
       console.log('user disconnected');
-      const user = await User.findOneAndUpdate({_id: socket.decoded._id}, {isOnline: false}, {new: true});
+      const user = await User.findOneAndUpdate({_id: socket.user._id}, {isOnline: false}, {new: true});
     } catch(err) { console.log(err) }
   });
   socket.on("ping", async () => {
