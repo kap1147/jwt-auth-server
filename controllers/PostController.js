@@ -26,26 +26,28 @@ exports.addPost = async (req, res) => {
     for (var i = 0; i < data.length; i++){
       tags.push(mongoose.Types.ObjectId(data[i]))
     }
-  }
+  };
+  let photos = [];
+  if (req.files) {
+    for (let i = 0; i < req.files.length; i++){
+        photos.push(req.files[i].location)
+      }
+  };
   let postData = {
     author: mongoose.Types.ObjectId(req.user._id),
     content: req.body.content,
     status: "open",
     price: req.body.price,
-    photos: req.files[0].location,
+    photos: photos,
+    city: req.body.city,
+    state: req.body.state,
     location: {
       type: "Point",
-      coordinates: [req.body.lng, req.body.lat],
+      coordinates: [req.body.lon, req.body.lat],
     },
     tags: tags
   };
   Post.create(postData, function (err, doc) {
-    if (req.files){
-      for (let i = 0; i < req.files.length; i++){
-        doc.photos.push(req.files[i].location)
-      }
-    }
-    doc.save();
     if (err) return res.send(err);
     let update = {
       $push: { posts: doc._id },

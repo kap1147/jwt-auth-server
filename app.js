@@ -98,8 +98,8 @@ io.use(function(socket, next){
       };
       const newAlert = new Notification(alertData);
       await newAlert.save();
-      newAlert.sender = sender;
-      io.in(socket.user._id).emit('newAlert', newAlert);
+      let payload = await Notification.findOne({_id: newAlert._id}).populate('author', 'imageURL alias');
+      io.in(socket.user._id).emit('newAlert', payload );
     } catch(err) {
       console.error(err);
     }
