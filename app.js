@@ -25,8 +25,10 @@ app.get("/", (req, res) => {
 });
 const authRoute = require("./routes/auth");
 const postRoute = require("./routes/post");
+const chatRoute = require("./routes/chat");
 app.use("/api/auth", authRoute);
 app.use("/api/posts", postRoute);
+app.use("/api/chat", chatRoute);
 
 ///////SSL Server//////
 const sslServer = https.createServer(
