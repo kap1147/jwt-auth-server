@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const messageSchema = new mongoose.Schema({
+const messageSchema = mongoose.Schema({
   content: { 
     type: String,
     required: true,
@@ -17,7 +17,11 @@ const messageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Profile',
     required: true,
-  }
+  },
+  read: {
+    type: Boolean,
+    default: false
+  },
 });
 
 module.exports = mongoose.model("Message", messageSchema);

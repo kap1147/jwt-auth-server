@@ -10,10 +10,10 @@ exports.getChatId = async (req, res) => {
     let filter = { subscribers: { $all: users } };
     const chat = await Chat.findOne(filter);
     if (chat) {
-      return res.status(200).json({chatId: chat._id});
+      return res.status(200).json({chatId: chat._id, userId: req.user._id});
     } else {
       const newChat = await Chat.create({subscribers: users});
-      return res.status(200).json({chatId: newChat._id});
+      return res.status(200).json({chatId: newChat._id, userId: req.user._id});
     };
   } catch(err) {
     console.log(err);

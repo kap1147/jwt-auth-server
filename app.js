@@ -45,10 +45,11 @@ sslServer.listen(port , () => console.log(`Secure server running on :${port}`));
 const io = socketIo(sslServer, {path: '/socket.io'});
 const jwt = require('jsonwebtoken');
 const Bid = require('./models/Bid');
+const Chat = require('./models/Chat');
+const Message = require('./models/Message');
 const Notification = require('./models/Notification');
 const Post = require('./models/Post');
 const User = require('./models/User');
-
 io.use(function(socket, next){
   if (socket.handshake.query && socket.handshake.query.token){
     jwt.verify(socket.handshake.query.token, process.env.JWT_ACCESS_SECRET, function(err, decoded) {
@@ -65,6 +66,42 @@ io.use(function(socket, next){
 })
 .on('connection', (socket) => {
   console.log(`User connected to socket.`);
+
+  socket.on('joinChat', async (chatId) => {
+    try {
+      const chat = await Chat.findById(chatId).populate({
+        path: 'messages',
+        populate: {path: 'author'}
+      }).limit(50);
+      if (chat) {
+        socket.join(String(chat._id));
+        socket.emit('allMessages', chat.messages);
+      };
+    } catch(err) {
+      console.log(err);
+    };
+  });
+  socket.on('leaveChat', (chatId) => {
+     console.log('leaving ', chatId);
+    socket.leave(chatId);
+  });
+  socket.on('submitNewMessage', async (data) => {
+    try {
+      let message = await Message.create({
+        content: data.content,
+	    author: socket.user._id
+      });
+      if (message) {
+        let chat = await Chat.findById(data.chatId);
+        chat.messages.push(message._id);
+	await chat.save();
+	const popMessage = await Message.findById(message._id).populate('author');
+	io.in(String(chat._id)).emit('newMessage', popMessage);
+	// socket.emit('newMessage', message)
+      };
+    } catch(err) {};
+  });
+
   socket.on('isOnline', async () => {
     try {
       const user = await User.findOneAndUpdate({_id: socket.user._id}, {isOnline: true}, {new: true});  
