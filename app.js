@@ -74,22 +74,29 @@ io.use(function(socket, next){
         populate: {path: 'author'}
       }).limit(50);
       if (chat) {
+	chat.viewers.push(socket.user._id);
+	await chat.save();
+	console.log('first viewer list', chat.viewers);
         socket.join(String(chat._id));
         socket.emit('allMessages', chat.messages);
+	io.in(chatId).emit('isViewing', chat.viewers);
       };
     } catch(err) {
       console.log(err);
     };
   });
-  socket.on('leaveChat', (chatId) => {
-     console.log('leaving ', chatId);
+  socket.on('leaveChat', async (chatId) => {
+    console.log('leaving ', chatId);
+    let chat = await Chat.findOneAndUpdate({_id: chatId},{$pull: {viewers: socket.user._id}}, {new: true});
     socket.leave(chatId);
+    socket.to(chatId).emit('isViewing', chat.viewers);
   });
   socket.on('submitNewMessage', async (data) => {
     try {
       let message = await Message.create({
         content: data.content,
-	    author: socket.user._id
+	author: socket.user._id,
+	chatId: data.chatId,
       });
       if (message) {
         let chat = await Chat.findById(data.chatId);
@@ -159,5 +166,31 @@ io.use(function(socket, next){
   });
   socket.on("ping", async () => {
     console.log('ping');
+  });
+});
+
+const connection = mongoose.connection;
+connection.once("open", () => {
+  console.log('MongoDB changeStream connection open');
+  const chatChangeStream = connection.collection('chats').watch();
+
+  chatChangeStream.on('change', async (change) => {
+    switch (change.operationType) {
+      case 'delete':
+        await Message.deleteMany({chatId: change.documentKey._id});
+    };
+  });
+  const messageChangeStream = connection.collection('messages').watch();
+
+  messageChangeStream.on('change', async (change) => {
+    switch (change.operationType) {
+      case 'delete':
+	let messageId = change.documentKey._id;
+        await Chat.updateOne(
+		{messages: messageId}, 
+		{$pull: {messages: messageId}}, 
+		{upsert: false}
+	);
+    };
   });
 });

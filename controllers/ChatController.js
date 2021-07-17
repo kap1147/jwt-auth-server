@@ -8,12 +8,12 @@ exports.getChatId = async (req, res) => {
       mongoose.Types.ObjectId(req.body.friendId),
     ];
     let filter = { subscribers: { $all: users } };
-    const chat = await Chat.findOne(filter);
+    const chat = await Chat.findOne(filter).populate('subscribers');
     if (chat) {
-      return res.status(200).json({chatId: chat._id, userId: req.user._id});
+      return res.status(200).json({chatId: chat._id, userId: req.user._id, profiles: chat.subscribers});
     } else {
       const newChat = await Chat.create({subscribers: users});
-      return res.status(200).json({chatId: newChat._id, userId: req.user._id});
+      return res.status(200).json({chatId: newChat._id, userId: req.user._id, profiles: chat.subscribers});
     };
   } catch(err) {
     console.log(err);

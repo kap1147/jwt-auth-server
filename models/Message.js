@@ -18,6 +18,10 @@ const messageSchema = mongoose.Schema({
     ref: 'Profile',
     required: true,
   },
+  chatId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+  },
   read: {
     type: Boolean,
     default: false
