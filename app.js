@@ -55,7 +55,6 @@ io.use(function(socket, next){
     jwt.verify(socket.handshake.query.token, process.env.JWT_ACCESS_SECRET, function(err, decoded) {
       if (err) return next(new Error('Authentication error'));
       socket.user = decoded;
-      console.log('room id: ', decoded._id);
       socket.join(decoded._id);
       next();
     });
@@ -107,6 +106,12 @@ io.use(function(socket, next){
 	// socket.emit('newMessage', message)
       };
     } catch(err) {};
+  });
+  socket.on('getChats', async () => {
+    let chats = await Chat.find({subscribers: {$in: socket.user._id}});
+    if (chats) {
+      socket.emit('allChats', chats);
+    };
   });
 
   socket.on('isOnline', async () => {
