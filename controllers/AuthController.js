@@ -71,6 +71,7 @@ exports.getUser = async (req, res) => {
     const profile = await Profile.findById(req.user._id);
     if (profile) {
       return res.status(200).json({user: {
+	_id: profile._id,
         imageURL: profile.imageURL,
 	alias: profile.alias
       }});
