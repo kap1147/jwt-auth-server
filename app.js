@@ -107,13 +107,29 @@ io.use(function(socket, next){
       };
     } catch(err) {};
   });
-  socket.on('getChats', async () => {
-    let chats = await Chat.find({subscribers: {$in: socket.user._id}});
+  socket.on('getChats', async () => { 
+    let payload = [];
+    let chats = await Chat.find({subscribers: {$in: socket.user._id}}).select('messages subscribers').populate({
+	    path: 'messages',
+	    options: {
+	      sort: {'timestamp': -1}
+	    },
+	    perDocumentLimit: 1,
+	    populate: {
+	      path: 'author',
+	    }
+    }).populate({
+      path: 'subscribers',
+    });
     if (chats) {
+      console.log(chats);
       socket.emit('allChats', chats);
     };
   });
-
+  socket.on('removeChat', async (id) => {
+    console.log('removing chat', id);
+    await Chat.findByIdAndUpdate(id, {$pull: {subscribers: socket.user._id}});
+  });
   socket.on('isOnline', async () => {
     try {
       const user = await User.findOneAndUpdate({_id: socket.user._id}, {isOnline: true}, {new: true});  

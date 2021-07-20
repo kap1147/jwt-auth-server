@@ -6,7 +6,7 @@ const Middleware = require("../middlewares");
 router.post("/refresh_token", AuthController.generateRefreshToken);
 
 //@route DELETE /api/auth/logout
-router.delete("/logout", AuthController.logout);
+router.get("/logout", Middleware.checkAuth,  AuthController.logout);
 
 //Redirect to home page if login succeeded or to /auth/login/failed if failed
 router.get('/google/callback', AuthController.googleCallback);
